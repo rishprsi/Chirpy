@@ -7,36 +7,56 @@ import (
 	"os"
 	"sync/atomic"
 
+	"Chirpy/internal/database"
+
 	"github.com/joho/godotenv"
-	"github.com/rishprsi/Chirpy/internal/database"
 
 	_ "github.com/lib/pq"
 )
 
 type apiConfig struct {
 	fileserverHits atomic.Int32
+	db             *database.Queries
+	platform       string
 }
 
 func main() {
-	godotenv.Load()
+	err := godotenv.Load()
+	if err != nil {
+		log.Printf("Failed to load .env file with the error: %v", err)
+	}
+
 	dbURL := os.Getenv("DB_URL")
+	platform := os.Getenv("PLATFORM")
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
 		log.Printf("Failed to create a connection with the database with err: %v\n", err)
 	}
-	dbqueries := database.New(db)
+
+	dbQueries := database.New(db)
+
 	port := "8080"
 	filepathRoot := "."
 	serveMux := http.NewServeMux()
-	cfg := apiConfig{}
+	cfg := apiConfig{
+		fileserverHits: atomic.Int32{},
+		db:             dbQueries,
+		platform:       platform,
+	}
 
 	serveMux.Handle("/app", cfg.middlewareMetricInc(http.StripPrefix("/app", http.FileServer(http.Dir(filepathRoot)))))
 	serveMux.Handle("/app/", cfg.middlewareMetricInc(http.StripPrefix("/app", http.FileServer(http.Dir(filepathRoot)))))
 
 	serveMux.HandleFunc("GET /api/healthz", Readiness)
-	serveMux.HandleFunc("POST /api/validate_chirp", ChirpValidation)
+	// serveMux.HandleFunc("POST /api/validate_chirp", ChirpValidation)
+	serveMux.HandleFunc("POST /api/users", cfg.CreateUserHandler)
+	serveMux.HandleFunc("POST /api/login", cfg.handlerUserLogin)
 
-	serveMux.HandleFunc("POST /admin/reset", cfg.ResetMetrics)
+	serveMux.HandleFunc("POST /api/chirps", cfg.handlerChirpsCreate)
+	serveMux.HandleFunc("GET /api/chirps", cfg.handlerChirpsGetAll)
+	serveMux.HandleFunc("GET /api/chirps/{chirpID}", cfg.handlerChirpsGetByID)
+
+	serveMux.HandleFunc("POST /admin/reset", cfg.ResetHandler)
 	serveMux.HandleFunc("GET /admin/metrics", cfg.GetMetrics)
 
 	server := http.Server{
