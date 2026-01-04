@@ -12,6 +12,7 @@ validateRequests() {
     response=$(curl -X POST "$url/validate_chirp" \
       -H "Content-Type: application/json" \
       -d "$body")
+    # -H "Authorization: Bearer ${JWT_TOKEN}" \
 
     echo "${response}" | jq
   done

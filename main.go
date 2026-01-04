@@ -18,6 +18,7 @@ type apiConfig struct {
 	fileserverHits atomic.Int32
 	db             *database.Queries
 	platform       string
+	jwtSecret      string
 }
 
 func main() {
@@ -42,6 +43,7 @@ func main() {
 		fileserverHits: atomic.Int32{},
 		db:             dbQueries,
 		platform:       platform,
+		jwtSecret:      os.Getenv("JWT_TOKEN"),
 	}
 
 	serveMux.Handle("/app", cfg.middlewareMetricInc(http.StripPrefix("/app", http.FileServer(http.Dir(filepathRoot)))))
@@ -50,7 +52,10 @@ func main() {
 	serveMux.HandleFunc("GET /api/healthz", Readiness)
 	// serveMux.HandleFunc("POST /api/validate_chirp", ChirpValidation)
 	serveMux.HandleFunc("POST /api/users", cfg.CreateUserHandler)
+	serveMux.HandleFunc("PUT /api/users", cfg.handlerUserModification)
 	serveMux.HandleFunc("POST /api/login", cfg.handlerUserLogin)
+	serveMux.HandleFunc("POST /api/refresh", cfg.handlerRefreshToken)
+	serveMux.HandleFunc("POST /api/revoke", cfg.handlerRevokeRefreshToken)
 
 	serveMux.HandleFunc("POST /api/chirps", cfg.handlerChirpsCreate)
 	serveMux.HandleFunc("GET /api/chirps", cfg.handlerChirpsGetAll)

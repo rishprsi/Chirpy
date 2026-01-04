@@ -3,7 +3,7 @@ package auth
 import "testing"
 
 func TestValidHash(t *testing.T) {
-	hash, err := HashPassword("pasword")
+	hash, err := HashPassword("password")
 	if err != nil {
 		t.Fatal(err)
 	}
