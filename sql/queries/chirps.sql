@@ -12,6 +12,10 @@ VALUES (
 -- name: GetAllChirps :many
 SELECT * FROM chirps;
 
+-- name: GetChirpsByUser :many
+SELECT * FROM chirps
+WHERE user_id = $1;
+
 -- name: GetChirpByID :one
 SELECT * FROM chirps
 WHERE id = $1;

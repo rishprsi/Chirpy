@@ -19,6 +19,7 @@ type apiConfig struct {
 	db             *database.Queries
 	platform       string
 	jwtSecret      string
+	polkaKey       string
 }
 
 func main() {
@@ -29,6 +30,7 @@ func main() {
 
 	dbURL := os.Getenv("DB_URL")
 	platform := os.Getenv("PLATFORM")
+	polkaKey := os.Getenv("POLKA_KEY")
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
 		log.Printf("Failed to create a connection with the database with err: %v\n", err)
@@ -44,24 +46,34 @@ func main() {
 		db:             dbQueries,
 		platform:       platform,
 		jwtSecret:      os.Getenv("JWT_TOKEN"),
+		polkaKey:       polkaKey,
 	}
 
+	// Frontend APIs
 	serveMux.Handle("/app", cfg.middlewareMetricInc(http.StripPrefix("/app", http.FileServer(http.Dir(filepathRoot)))))
 	serveMux.Handle("/app/", cfg.middlewareMetricInc(http.StripPrefix("/app", http.FileServer(http.Dir(filepathRoot)))))
 
 	serveMux.HandleFunc("GET /api/healthz", Readiness)
-	// serveMux.HandleFunc("POST /api/validate_chirp", ChirpValidation)
+
+	// User APIs
 	serveMux.HandleFunc("POST /api/users", cfg.CreateUserHandler)
 	serveMux.HandleFunc("PUT /api/users", cfg.handlerUserModification)
+
+	// Webhooks APIs
+	serveMux.HandleFunc("POST /api/polka/webhooks", cfg.handlerUpgradeUser)
+
+	// Auth APIs
 	serveMux.HandleFunc("POST /api/login", cfg.handlerUserLogin)
 	serveMux.HandleFunc("POST /api/refresh", cfg.handlerRefreshToken)
 	serveMux.HandleFunc("POST /api/revoke", cfg.handlerRevokeRefreshToken)
 
+	// Chirp APIs
 	serveMux.HandleFunc("POST /api/chirps", cfg.handlerChirpsCreate)
-	serveMux.HandleFunc("GET /api/chirps", cfg.handlerChirpsGetAll)
+	serveMux.HandleFunc("GET /api/chirps?author_id={authorID}", cfg.handlerChirpsGetAll)
 	serveMux.HandleFunc("GET /api/chirps/{chirpID}", cfg.handlerChirpsGetByID)
 	serveMux.HandleFunc("DELETE /api/chirps/{chirpID}", cfg.handlerDeleteChirpByID)
 
+	// Adming APIs
 	serveMux.HandleFunc("POST /admin/reset", cfg.ResetHandler)
 	serveMux.HandleFunc("GET /admin/metrics", cfg.GetMetrics)
 

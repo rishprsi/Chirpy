@@ -10,6 +10,7 @@ func DBUserToUser(dbUser database.User, token string, refreshToken string) User 
 		CreatedAt:    dbUser.CreatedAt,
 		UpdatedAt:    dbUser.CreatedAt,
 		Email:        dbUser.Email,
+		IsChirpyRed:  dbUser.IsChirpyRed,
 		Token:        token,
 		RefreshToken: refreshToken,
 	}
