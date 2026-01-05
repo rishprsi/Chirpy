@@ -1,15 +1,45 @@
 package main
 
 import (
+	"log"
 	"net/http"
+	"sort"
+
+	"Chirpy/internal/database"
 
 	"github.com/google/uuid"
 )
 
 func (cfg *apiConfig) handlerChirpsGetAll(writer http.ResponseWriter, request *http.Request) {
-	dbChirps, err := cfg.db.GetAllChirps(request.Context())
-	if err != nil {
-		respondWithError(writer, 500, "Unable to get chirps from the db", err)
+	authorID := request.URL.Query()["author_id"]
+	var err error
+	dbChirps := make([]database.Chirp, 0, 100)
+	if authorID == nil {
+
+		dbChirps, err = cfg.db.GetAllChirps(request.Context())
+		if err != nil {
+			respondWithError(writer, 500, "Unable to get chirps from the db", err)
+			return
+		}
+	} else {
+
+		userID, err := uuid.Parse(authorID[0])
+		if err != nil {
+			respondWithError(writer, 500, "Unable to get chirps from the db", err)
+			return
+		}
+		dbChirps, err = cfg.db.GetChirpsByUser(request.Context(), userID)
+		if err != nil {
+			respondWithError(writer, 404, "User not found", err)
+			return
+		}
+	}
+	paramSort := request.URL.Query()["sort"]
+	log.Printf("query params are: %v", request.URL.Query())
+	if paramSort != nil && paramSort[0] == "desc" {
+		sort.Slice(dbChirps, func(i, j int) bool { return dbChirps[i].CreatedAt.After(dbChirps[j].CreatedAt) })
+	} else {
+		sort.Slice(dbChirps, func(i, j int) bool { return dbChirps[i].CreatedAt.Before(dbChirps[j].CreatedAt) })
 	}
 
 	chirps := []Chirp{}
@@ -34,7 +64,7 @@ func (cfg *apiConfig) handlerChirpsGetByID(writer http.ResponseWriter, request *
 
 	dbChirp, err := cfg.db.GetChirpByID(request.Context(), chirpID)
 	if err != nil {
-		respondWithError(writer, 404, "Chip not found", err)
+		respondWithError(writer, 404, "Chirp not found", err)
 	}
 
 	chirp := Chirp{

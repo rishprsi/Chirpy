@@ -69,7 +69,7 @@ func main() {
 
 	// Chirp APIs
 	serveMux.HandleFunc("POST /api/chirps", cfg.handlerChirpsCreate)
-	serveMux.HandleFunc("GET /api/chirps?author_id={authorID}", cfg.handlerChirpsGetAll)
+	serveMux.HandleFunc("GET /api/chirps", cfg.handlerChirpsGetAll)
 	serveMux.HandleFunc("GET /api/chirps/{chirpID}", cfg.handlerChirpsGetByID)
 	serveMux.HandleFunc("DELETE /api/chirps/{chirpID}", cfg.handlerDeleteChirpByID)
 
